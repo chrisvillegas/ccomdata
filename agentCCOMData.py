@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
+from chromadb import Client
+from chromadb.config import Settings
 from langchain_community.vectorstores import Chroma
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
@@ -23,10 +25,11 @@ logging.basicConfig(level=logging.INFO)
 # Configuration for ChromaDB
 configuration = {
     "client": "PersistentClient",
-    "path": "/tmp/.chroma"  # Adjust the path to your server/environment setup
+    "path": "chroma_data"  # Adjust the path to your server/environment setup
 }
 
 collection_name = "my_collection"
+
 
 # Function to ensure dataframe compatibility with Arrow
 def ensure_arrow_compatibility(df):
@@ -232,11 +235,19 @@ def main():
     if 'messages' not in st.session_state:
         st.session_state['messages'] = []
 
-    # ChromaDB connection for retrieving documents collection
     conn = st.connection("chromadb",
                          type=ChromadbConnection,
                          **configuration)
-    documents_collection_df = conn.get_collection_data(collection_name)
+
+    # Attempt to retrieve or create the collection
+    try:
+        # Access the collection directly if it already exists
+        documents_collection_df = conn.get_collection_data(collection_name)
+    except Exception:
+        # Use ._instance to create the collection if it doesn't exist
+        collection = conn._instance.get_or_create_collection(collection_name)
+        documents_collection_df = pd.DataFrame()  # Initialize as empty DataFrame if collection is just created
+
     st.dataframe(documents_collection_df)
 
     dfs = None
