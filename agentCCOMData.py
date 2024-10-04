@@ -1,8 +1,7 @@
-import sys
 import streamlit as st
+from streamlit_chromadb_connection.chromadb_connection import ChromadbConnection
 import pandas as pd
 import matplotlib.pyplot as plt
-# Removed keyring since we won't use it
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -12,13 +11,20 @@ from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, H
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
-import logging
 from io import BytesIO
 from fpdf import FPDF
 import docx
+import logging
 
 logging.basicConfig(level=logging.INFO)
 
+# Configuration for ChromaDB
+configuration = {
+    "client": "PersistentClient",
+    "path": "/tmp/.chroma"  # Adjust the path to your server/environment setup
+}
+
+collection_name = "documents_collection"
 
 # Function to ensure dataframe compatibility with Arrow
 def ensure_arrow_compatibility(df):
@@ -223,6 +229,13 @@ def main():
 
     if 'messages' not in st.session_state:
         st.session_state['messages'] = []
+
+    # ChromaDB connection for retrieving documents collection
+    conn = st.connection("chromadb",
+                         type=ChromadbConnection,
+                         **configuration)
+    documents_collection_df = conn.get_collection_data(collection_name)
+    st.dataframe(documents_collection_df)
 
     dfs = None
 
