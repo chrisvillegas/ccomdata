@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 # Configuration for ChromaDB
 configuration = {
     "client": "PersistentClient",
-    "path": "chromaData"  # Adjust the path to your server/environment setup
+    "path": "/tmp/.chroma"  # Adjust the path to your server/environment setup
 }
 
 collection_name = "my_collection"
