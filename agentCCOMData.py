@@ -1,3 +1,5 @@
+import pysqlite3
+import sys
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,7 +21,7 @@ import logging
 
 # Adding ChromaDB Connection
 from streamlit_chromadb_connection.chromadb_connection import ChromadbConnection
-
+sys.modules["sqlite3"] = pysqlite3
 logging.basicConfig(level=logging.INFO)
 
 # Configuration for ChromaDB
