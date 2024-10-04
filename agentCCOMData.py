@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from chromadb import Client as ChromaClient
-from chromadb.config import Settings
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -17,20 +15,24 @@ from fpdf import FPDF
 import docx
 import logging
 
+# Adding ChromaDB Connection
+from streamlit_chromadb_connection.chromadb_connection import ChromadbConnection
+
 logging.basicConfig(level=logging.INFO)
 
-# Chroma configuration with an in-memory SQLite database
-configuration = Settings(
-    chroma_db_impl="sqlite",
-    persist_directory=":memory:"  # Use in-memory database for temporary data
-)
+# Configuration for ChromaDB
+configuration = {
+    "client": "PersistentClient",
+    "path": "chromaData"  # Adjust the path to your server/environment setup
+}
 
-collection_name = "documents_collection"
+collection_name = "my_collection"
 
 # Function to ensure dataframe compatibility with Arrow
 def ensure_arrow_compatibility(df):
     """Ensure dataframe is compatible with Arrow by converting all columns to string."""
     return df.astype(str)
+
 
 # Function to rename duplicate columns without inplace assignment
 def rename_duplicate_columns(df):
@@ -43,6 +45,7 @@ def rename_duplicate_columns(df):
     df.columns = cols
     return df.dropna(axis=1, how='all')  # Drop empty or unnamed columns
 
+
 # Function to extract the client name from the dataframe
 def extract_client_name(dfs):
     """Attempt to extract the client name from the loaded sheets."""
@@ -52,6 +55,7 @@ def extract_client_name(dfs):
                 client_name = df[col].iloc[0]  # Usually, the client name is the first row.
                 return client_name
     return None  # Fallback if client name not found
+
 
 # Function to prompt user for OpenAI API key and store it in session state
 def get_openai_api_key():
@@ -68,6 +72,7 @@ def get_openai_api_key():
         st.warning("Please enter your OpenAI API key.")
 
     return st.session_state["api_key"]
+
 
 @st.cache_data
 def load_excel_file(uploaded_file):
@@ -115,6 +120,7 @@ def load_excel_file(uploaded_file):
         st.sidebar.error(f"Error processing Excel file: {e}")
         return None
 
+
 def setup_rag_chain(api_key, dfs):
     llm = ChatOpenAI(api_key=api_key, temperature=0, model="gpt-4o")
     embeddings = OpenAIEmbeddings(api_key=api_key)
@@ -149,6 +155,7 @@ def setup_rag_chain(api_key, dfs):
         combine_docs_chain=combine_documents_chain
     )
     return qa_chain
+
 
 # Answer simple queries directly from the dataframe
 def answer_simple_question(prompt, dfs):
@@ -211,6 +218,7 @@ def export_word(chat_history):
     doc_output.seek(0)
     return doc_output
 
+
 # Main function for Streamlit app
 def main():
     st.set_page_config(layout="wide", page_title="CCOM Data")
@@ -225,11 +233,10 @@ def main():
         st.session_state['messages'] = []
 
     # ChromaDB connection for retrieving documents collection
-    client = ChromaClient(configuration)
-    documents_collection = client.get_collection(collection_name)
-
-    # Retrieve documents data and display in a DataFrame
-    documents_collection_df = pd.DataFrame(documents_collection.all())
+    conn = st.connection("chromadb",
+                         type=ChromadbConnection,
+                         **configuration)
+    documents_collection_df = conn.get_collection_data(collection_name)
     st.dataframe(documents_collection_df)
 
     dfs = None
