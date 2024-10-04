@@ -1,8 +1,8 @@
 aiohappyeyeballs==2.4.3
 aiohttp==3.10.8
 aiosignal==1.3.1
-altair>=5.2.0,<5.4.0  # Allowing version range to satisfy streamlit-chromadb-connection
-annotated-types>=0.6.0,<0.8.0  # Allowing range for compatibility with streamlit-chromadb
+altair==5.2.0
+annotated-types==0.7.0
 anyio==4.4.0
 asgiref==3.8.1
 attrs==23.2.0
