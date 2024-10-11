@@ -4,6 +4,7 @@ import platform
 import keyring
 from keyring.backends import SecretService
 from keyring.backends import macOS  # Correct macOS backend
+from langchain.retrievers import MultiQueryRetriever
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
@@ -52,37 +53,40 @@ def get_openai_api_key():
 def setup_rag_chain(api_key, dfs):
     llm = ChatOpenAI(api_key=api_key, temperature=0, model="gpt-4o")
     embeddings = OpenAIEmbeddings(api_key=api_key)
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
+
+    # Text splitter for creating document chunks
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
     documents = []
     for df in dfs:
-        doc_text = df.to_string(index=False)  # Convert entire dataframe to a text document
+        doc_text = df.to_string(index=False)
         documents.append(doc_text)
 
     split_docs = []
     for doc in documents:
         split_docs.extend(text_splitter.split_text(doc))
 
+    # Store in vectorstore
     vectorstore = Chroma.from_texts(split_docs, embedding=embeddings)
-    logging.info(f"Total documents for retrieval: {len(split_docs)}")
 
-    retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 17})
+    retriever = MultiQueryRetriever.from_llm(
+        retriever=vectorstore.as_retriever(search_kwargs={"k": 10}),
+        llm=llm
+    )
 
-    # Optimized prompt for inference
     prompt_template = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(
-            "You are an expert in Nielsen score TV ratings data analysis. Use only the information from the retrieved documents (context) to answer the user's question. "
-            "If the answer is explicitly present in the document, provide it directly. If the answer can be logically inferred from the context (e.g., counting items, deducing relationships), use logical reasoning to infer the answer. "
-            "If the answer cannot be found or inferred from the document, state: 'The information is not available in the provided documents.'"
+            "You are a Q&A assistant. Use retrieved data to answer queries. If not in the document, reply 'No answer found.'"
         ),
         HumanMessagePromptTemplate.from_template("Question: {input}\nContext: {context}")
     ])
 
-    combine_documents_chain = create_stuff_documents_chain(llm=llm, prompt=prompt_template)
+    # Retrieval chain setup
     qa_chain = create_retrieval_chain(
         retriever=retriever,
-        combine_docs_chain=combine_documents_chain
+        combine_docs_chain=create_stuff_documents_chain(llm=llm, prompt=prompt_template)
     )
+
     return qa_chain
 
 
