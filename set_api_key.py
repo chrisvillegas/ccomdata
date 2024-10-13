@@ -2,7 +2,7 @@ import keyring
 import platform
 
 # Set up the API key
-api_key = "sk-hjkdhjkd"
+api_key = "sk-ragmedia-jdjdlk89j"
 
 # Check the operating system to select the appropriate keyring backend
 if "Ubuntu" in platform.platform():
@@ -14,8 +14,8 @@ if "Ubuntu" in platform.platform():
         print(f"Failed to store the API key in the system keychain: {str(e)}")
 else:
     # If running in a headless environment or the system keychain is unavailable, use a file-based backend
-    import keyrings.alt
-    keyring.set_keyring(keyrings.alt.PlaintextKeyring())
+    from keyrings.alt.file import PlaintextKeyring
+    keyring.set_keyring(PlaintextKeyring())  # Use PlaintextKeyring from keyrings.alt.file
     keyring.set_password("openai", "api_key", api_key)
     print("API key has been stored in a plain text file (for testing only).")
 
